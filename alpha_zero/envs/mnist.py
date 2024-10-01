@@ -34,11 +34,7 @@ class PixelDebateEnv(gym.Env):
         self.action_space = spaces.Discrete(28 * 28)
         
         # Observation space: 28x28 image, 28x28 mask, current player
-        self.observation_space = spaces.Dict({
-            'image': spaces.Box(low=0, high=255, shape=(28, 28), dtype=np.uint8),
-            'mask': spaces.Box(low=0, high=1, shape=(28, 28), dtype=np.uint8),
-            'current_player': spaces.Discrete(2)
-        })
+        self.observation_space = spaces.Box(low=0, high=255, shape=(2, 28, 28), dtype=np.uint8)
         
         # Load MNIST dataset
         self.mnist = torchvision.datasets.MNIST(root='./data', train=False, download=True)
@@ -51,8 +47,7 @@ class PixelDebateEnv(gym.Env):
     def is_game_over(self):
         return self.steps >= self.max_turns
     
-    def observation(self):
-        return self._get_obs()
+
     
     def reset(self):
         # Select random MNIST image
@@ -73,7 +68,7 @@ class PixelDebateEnv(gym.Env):
         
         self.steps = 0
         
-        return self._get_obs()
+        return self.observation()
     
     @property
     def to_play(self):
@@ -100,28 +95,25 @@ class PixelDebateEnv(gym.Env):
             # Reward tuple: (honest_player_reward, liar_reward)
             reward = (1, -1) if winner == 0 else (-1, 1)
         
-        return self._get_obs(), reward, done, {}
+        return self.observation(), reward, done, {}
     
     def render(self, mode='human'):
         # Implement visualization here
         pass
     
-    def _get_obs(self):
-        return {
-            'image': self.image,
-            'mask': self.mask,
-            'current_player': self.current_player.value
-        }
+    def observation(self) -> np.ndarray:
+        obs = np.zeros((2, 28, 28), dtype=np.uint8)
+        obs[0] = self.mask
+        obs[1] = self.image
+        return obs
     
     def _determine_winner(self):
         # Prepare input for judge
-        judge_input = torch.zeros(2, 28, 28)
-        judge_input[0] = torch.tensor(self.mask)
-        judge_input[1] = torch.tensor(self.image) / 255.0
+        judge_input = torch.from_numpy(self.observation()).unsqueeze(0)
         
         # Get judge's prediction
         with torch.no_grad():
-            logits = self.judge(judge_input.unsqueeze(0))
+            logits = self.judge(judge_input.float())
         
         # Compare logits for honest and liar labels
         honest_logit = logits[0, self.honest_label]

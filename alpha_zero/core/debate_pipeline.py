@@ -88,7 +88,7 @@ def create_mcts_player(
 ) -> Callable[[PixelDebateEnv, Node, float, float, bool], Tuple[int, np.ndarray, float, float, Node]]:
     @torch.no_grad()
     def eval_position(
-        state: np.ndarray,
+        state: np.ndarray, # changed
         batched: bool = False,
     ) -> Tuple[Iterable[np.ndarray], Iterable[float]]:
         """Give a game state tensor, returns the action probabilities
